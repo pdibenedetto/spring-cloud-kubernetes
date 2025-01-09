@@ -27,6 +27,7 @@ import io.fabric8.kubernetes.api.model.EndpointsList;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServiceList;
 import io.fabric8.kubernetes.api.model.ServiceListBuilder;
+import io.fabric8.kubernetes.api.model.ServiceSpecBuilder;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient;
@@ -75,18 +76,35 @@ class KubernetesReactiveDiscoveryClientTests {
 	void verifyDefaults() {
 		ReactiveDiscoveryClient client = new KubernetesReactiveDiscoveryClient(kubernetesClient,
 				KubernetesDiscoveryProperties.DEFAULT, KubernetesClient::services);
-		assertThat(client.description()).isEqualTo("Kubernetes Reactive Discovery Client");
+		assertThat(client.description()).isEqualTo("Fabric8 Kubernetes Reactive Discovery Client");
 		assertThat(client.getOrder()).isEqualTo(ReactiveDiscoveryClient.DEFAULT_ORDER);
 	}
 
 	@Test
 	void shouldReturnFluxOfServices() {
-		kubernetesServer.expect().get().withPath("/api/v1/namespaces/test/services")
-				.andReturn(200, new ServiceListBuilder().addNewItem().withNewMetadata().withName("s1")
-						.withLabels(Map.of("label", "value")).endMetadata().endItem().addNewItem().withNewMetadata()
-						.withName("s2").withLabels(Map.of("label", "value", "label2", "value2")).endMetadata().endItem()
-						.addNewItem().withNewMetadata().withName("s3").endMetadata().endItem().build())
-				.once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/services")
+			.andReturn(200,
+					new ServiceListBuilder().addNewItem()
+						.withNewMetadata()
+						.withName("s1")
+						.withLabels(Map.of("label", "value"))
+						.endMetadata()
+						.endItem()
+						.addNewItem()
+						.withNewMetadata()
+						.withName("s2")
+						.withLabels(Map.of("label", "value", "label2", "value2"))
+						.endMetadata()
+						.endItem()
+						.addNewItem()
+						.withNewMetadata()
+						.withName("s3")
+						.endMetadata()
+						.endItem()
+						.build())
+			.once();
 		ReactiveDiscoveryClient client = new KubernetesReactiveDiscoveryClient(kubernetesClient,
 				KubernetesDiscoveryProperties.DEFAULT, KubernetesClient::services);
 		Flux<String> services = client.getServices();
@@ -95,8 +113,11 @@ class KubernetesReactiveDiscoveryClientTests {
 
 	@Test
 	void shouldReturnEmptyFluxOfServicesWhenNoInstancesFound() {
-		kubernetesServer.expect().get().withPath("/api/v1/namespaces/test/services")
-				.andReturn(200, new ServiceListBuilder().build()).once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/services")
+			.andReturn(200, new ServiceListBuilder().build())
+			.once();
 
 		ReactiveDiscoveryClient client = new KubernetesReactiveDiscoveryClient(kubernetesClient,
 				KubernetesDiscoveryProperties.DEFAULT, KubernetesClient::services);
@@ -106,9 +127,11 @@ class KubernetesReactiveDiscoveryClientTests {
 
 	@Test
 	void shouldReturnEmptyFluxForNonExistingService() {
-		kubernetesServer.expect().get()
-				.withPath("/api/v1/namespaces/test/endpoints?fieldSelector=metadata.name%3Dnonexistent-service")
-				.andReturn(200, new EndpointsBuilder().build()).once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/endpoints?fieldSelector=metadata.name%3Dnonexistent-service")
+			.andReturn(200, new EndpointsBuilder().build())
+			.once();
 
 		ReactiveDiscoveryClient client = new KubernetesReactiveDiscoveryClient(kubernetesClient,
 				KubernetesDiscoveryProperties.DEFAULT, KubernetesClient::services);
@@ -118,14 +141,24 @@ class KubernetesReactiveDiscoveryClientTests {
 
 	@Test
 	void shouldReturnEmptyFluxWhenServiceHasNoSubsets() {
-		kubernetesServer.expect().get().withPath("/api/v1/namespaces/test/services")
-				.andReturn(200, new ServiceListBuilder().addNewItem().withNewMetadata().withName("existing-service")
-						.withLabels(Map.of("label", "value")).endMetadata().endItem().build())
-				.once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/services")
+			.andReturn(200,
+					new ServiceListBuilder().addNewItem()
+						.withNewMetadata()
+						.withName("existing-service")
+						.withLabels(Map.of("label", "value"))
+						.endMetadata()
+						.endItem()
+						.build())
+			.once();
 
-		kubernetesServer.expect().get()
-				.withPath("/api/v1/namespaces/test/endpoints?fieldSelector=metadata.name%3Dexisting-service")
-				.andReturn(200, new EndpointsBuilder().build()).once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/endpoints?fieldSelector=metadata.name%3Dexisting-service")
+			.andReturn(200, new EndpointsBuilder().build())
+			.once();
 
 		ReactiveDiscoveryClient client = new KubernetesReactiveDiscoveryClient(kubernetesClient,
 				KubernetesDiscoveryProperties.DEFAULT, KubernetesClient::services);
@@ -135,13 +168,31 @@ class KubernetesReactiveDiscoveryClientTests {
 
 	@Test
 	void shouldReturnFlux() {
-		ServiceList services = new ServiceListBuilder().addNewItem().withNewMetadata().withName("existing-service")
-				.withNamespace("test").withLabels(Map.of("label", "value")).endMetadata().endItem().build();
+		ServiceList services = new ServiceListBuilder().addNewItem()
+			.withNewMetadata()
+			.withName("existing-service")
+			.withNamespace("test")
+			.withLabels(Map.of("label", "value"))
+			.endMetadata()
+			.withSpec(new ServiceSpecBuilder().withType("ExternalName").build())
+			.endItem()
+			.build();
 
-		Endpoints endPoint = new EndpointsBuilder().withNewMetadata().withName("existing-service").withNamespace("test")
-				.withLabels(Map.of("label", "value")).endMetadata().addNewSubset().addNewAddress().withIp("ip1")
-				.withNewTargetRef().withUid("uid1").endTargetRef().endAddress()
-				.addNewPort("http", "http_tcp", 80, "TCP").endSubset().build();
+		Endpoints endPoint = new EndpointsBuilder().withNewMetadata()
+			.withName("existing-service")
+			.withNamespace("test")
+			.withLabels(Map.of("label", "value"))
+			.endMetadata()
+			.addNewSubset()
+			.addNewAddress()
+			.withIp("ip1")
+			.withNewTargetRef()
+			.withUid("uid1")
+			.endTargetRef()
+			.endAddress()
+			.addNewPort("http", "http_tcp", 80, "TCP")
+			.endSubset()
+			.build();
 
 		List<Endpoints> endpointsList = new ArrayList<>();
 		endpointsList.add(endPoint);
@@ -149,14 +200,20 @@ class KubernetesReactiveDiscoveryClientTests {
 		EndpointsList endpoints = new EndpointsList();
 		endpoints.setItems(endpointsList);
 
-		kubernetesServer.expect().get()
-				.withPath("/api/v1/namespaces/test/endpoints?fieldSelector=metadata.name%3Dexisting-service")
-				.andReturn(200, endpoints).once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/endpoints?fieldSelector=metadata.name%3Dexisting-service")
+			.andReturn(200, endpoints)
+			.once();
 
-		kubernetesServer.expect().get().withPath("/api/v1/namespaces/test/services/existing-service")
-				.andReturn(200, services.getItems().get(0)).once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/services/existing-service")
+			.andReturn(200, services.getItems().get(0))
+			.once();
 
-		Metadata metadata = new Metadata(false, null, false, null, true, "port.");
+		kubernetesServer.expect().get().withPath("/api/v1/namespaces/test/services").andReturn(200, services).once();
+
 		ReactiveDiscoveryClient client = new KubernetesReactiveDiscoveryClient(kubernetesClient,
 				KubernetesDiscoveryProperties.DEFAULT, KubernetesClient::services);
 		Flux<ServiceInstance> instances = client.getInstances("existing-service");
@@ -165,14 +222,34 @@ class KubernetesReactiveDiscoveryClientTests {
 
 	@Test
 	void shouldReturnFluxWithPrefixedMetadata() {
-		kubernetesServer.expect().get().withPath("/api/v1/namespaces/test/services")
-				.andReturn(200, new ServiceListBuilder().addNewItem().withNewMetadata().withName("existing-service")
-						.withLabels(Map.of("label", "value")).endMetadata().endItem().build())
-				.once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/services")
+			.andReturn(200,
+					new ServiceListBuilder().addNewItem()
+						.withNewMetadata()
+						.withName("existing-service")
+						.withLabels(Map.of("label", "value"))
+						.endMetadata()
+						.withSpec(new ServiceSpecBuilder().withType("ExternalName").build())
+						.endItem()
+						.build())
+			.once();
 
-		Endpoints endPoint = new EndpointsBuilder().withNewMetadata().withName("endpoint").withNamespace("test")
-				.endMetadata().addNewSubset().addNewAddress().withIp("ip1").withNewTargetRef().withUid("uid1")
-				.endTargetRef().endAddress().addNewPort("http", "http_tcp", 80, "TCP").endSubset().build();
+		Endpoints endPoint = new EndpointsBuilder().withNewMetadata()
+			.withName("existing-service")
+			.withNamespace("test")
+			.endMetadata()
+			.addNewSubset()
+			.addNewAddress()
+			.withIp("ip1")
+			.withNewTargetRef()
+			.withUid("uid1")
+			.endTargetRef()
+			.endAddress()
+			.addNewPort("http", "http_tcp", 80, "TCP")
+			.endSubset()
+			.build();
 
 		List<Endpoints> endpointsList = new ArrayList<>();
 		endpointsList.add(endPoint);
@@ -180,16 +257,24 @@ class KubernetesReactiveDiscoveryClientTests {
 		EndpointsList endpoints = new EndpointsList();
 		endpoints.setItems(endpointsList);
 
-		kubernetesServer.expect().get()
-				.withPath("/api/v1/namespaces/test/endpoints?fieldSelector=metadata.name%3Dexisting-service")
-				.andReturn(200, endpoints).once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/endpoints?fieldSelector=metadata.name%3Dexisting-service")
+			.andReturn(200, endpoints)
+			.once();
 
-		kubernetesServer.expect().get().withPath("/api/v1/namespaces/test/services/existing-service")
-				.andReturn(200, new ServiceBuilder().withNewMetadata().withName("existing-service")
-						.withLabels(Map.of("label", "value")).endMetadata().build())
-				.once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/services/existing-service")
+			.andReturn(200,
+					new ServiceBuilder().withNewMetadata()
+						.withName("existing-service")
+						.withLabels(Map.of("label", "value"))
+						.endMetadata()
+						.withSpec(new ServiceSpecBuilder().withType("ExternalName").build())
+						.build())
+			.once();
 
-		Metadata metadata = new Metadata(true, "label.", true, "annotation.", true, "port.");
 		ReactiveDiscoveryClient client = new KubernetesReactiveDiscoveryClient(kubernetesClient,
 				KubernetesDiscoveryProperties.DEFAULT, KubernetesClient::services);
 		Flux<ServiceInstance> instances = client.getInstances("existing-service");
@@ -198,15 +283,35 @@ class KubernetesReactiveDiscoveryClientTests {
 
 	@Test
 	void shouldReturnFluxWhenServiceHasMultiplePortsAndPrimaryPortNameIsSet() {
-		kubernetesServer.expect().get().withPath("/api/v1/namespaces/test/services")
-				.andReturn(200, new ServiceListBuilder().addNewItem().withNewMetadata().withName("existing-service")
-						.withLabels(Map.of("label", "value")).endMetadata().endItem().build())
-				.once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/services")
+			.andReturn(200,
+					new ServiceListBuilder().addNewItem()
+						.withNewMetadata()
+						.withName("existing-service")
+						.withLabels(Map.of("label", "value"))
+						.endMetadata()
+						.withSpec(new ServiceSpecBuilder().withType("ExternalName").build())
+						.endItem()
+						.build())
+			.once();
 
-		Endpoints endPoint = new EndpointsBuilder().withNewMetadata().withName("endpoint").withNamespace("test")
-				.endMetadata().addNewSubset().addNewAddress().withIp("ip1").withNewTargetRef().withUid("uid1")
-				.endTargetRef().endAddress().addNewPort("http", "http_tcp", 80, "TCP")
-				.addNewPort("https", "https_tcp", 443, "TCP").endSubset().build();
+		Endpoints endPoint = new EndpointsBuilder().withNewMetadata()
+			.withName("existing-service")
+			.withNamespace("test")
+			.endMetadata()
+			.addNewSubset()
+			.addNewAddress()
+			.withIp("ip1")
+			.withNewTargetRef()
+			.withUid("uid1")
+			.endTargetRef()
+			.endAddress()
+			.addNewPort("http", "http_tcp", 80, "TCP")
+			.addNewPort("https", "https_tcp", 443, "TCP")
+			.endSubset()
+			.build();
 
 		List<Endpoints> endpointsList = new ArrayList<>();
 		endpointsList.add(endPoint);
@@ -214,14 +319,23 @@ class KubernetesReactiveDiscoveryClientTests {
 		EndpointsList endpoints = new EndpointsList();
 		endpoints.setItems(endpointsList);
 
-		kubernetesServer.expect().get()
-				.withPath("/api/v1/namespaces/test/endpoints?fieldSelector=metadata.name%3Dexisting-service")
-				.andReturn(200, endpoints).once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/endpoints?fieldSelector=metadata.name%3Dexisting-service")
+			.andReturn(200, endpoints)
+			.once();
 
-		kubernetesServer.expect().get().withPath("/api/v1/namespaces/test/services/existing-service")
-				.andReturn(200, new ServiceBuilder().withNewMetadata().withName("existing-service")
-						.withLabels(Map.of("label", "value")).endMetadata().build())
-				.once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/services/existing-service")
+			.andReturn(200,
+					new ServiceBuilder().withNewMetadata()
+						.withName("existing-service")
+						.withLabels(Map.of("label", "value"))
+						.endMetadata()
+						.withSpec(new ServiceSpecBuilder().withType("ExternalName").build())
+						.build())
+			.once();
 
 		ReactiveDiscoveryClient client = new KubernetesReactiveDiscoveryClient(kubernetesClient,
 				KubernetesDiscoveryProperties.DEFAULT, KubernetesClient::services);
@@ -231,26 +345,56 @@ class KubernetesReactiveDiscoveryClientTests {
 
 	@Test
 	void shouldReturnFluxOfServicesAcrossAllNamespaces() {
-		kubernetesServer.expect().get().withPath("/api/v1/namespaces/test/services")
-				.andReturn(200, new ServiceListBuilder().addNewItem().withNewMetadata().withName("existing-service")
-						.withLabels(Map.of("label", "value")).endMetadata().endItem().build())
-				.once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/services")
+			.andReturn(200,
+					new ServiceListBuilder().addNewItem()
+						.withNewMetadata()
+						.withName("existing-service")
+						.withLabels(Map.of("label", "value"))
+						.endMetadata()
+						.withSpec(new ServiceSpecBuilder().withType("ExternalName").build())
+						.endItem()
+						.build())
+			.once();
 
-		Endpoints endpoints = new EndpointsBuilder().withNewMetadata().withName("endpoint").withNamespace("test")
-				.endMetadata().addNewSubset().addNewAddress().withIp("ip1").withNewTargetRef().withUid("uid1")
-				.endTargetRef().endAddress().addNewPort("http", "http_tcp", 80, "TCP")
-				.addNewPort("https", "https_tcp", 443, "TCP").endSubset().build();
+		Endpoints endpoints = new EndpointsBuilder().withNewMetadata()
+			.withName("existing-service")
+			.withNamespace("test")
+			.endMetadata()
+			.addNewSubset()
+			.addNewAddress()
+			.withIp("ip1")
+			.withNewTargetRef()
+			.withUid("uid1")
+			.endTargetRef()
+			.endAddress()
+			.addNewPort("http", "http_tcp", 80, "TCP")
+			.addNewPort("https", "https_tcp", 443, "TCP")
+			.endSubset()
+			.build();
 
 		EndpointsList endpointsList = new EndpointsList();
 		endpointsList.setItems(singletonList(endpoints));
 
-		kubernetesServer.expect().get().withPath("/api/v1/endpoints?fieldSelector=metadata.name%3Dexisting-service")
-				.andReturn(200, endpointsList).once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/endpoints?fieldSelector=metadata.name%3Dexisting-service")
+			.andReturn(200, endpointsList)
+			.once();
 
-		kubernetesServer.expect().get().withPath("/api/v1/namespaces/test/services/existing-service")
-				.andReturn(200, new ServiceBuilder().withNewMetadata().withName("existing-service")
-						.withLabels(Map.of("label", "value")).endMetadata().build())
-				.once();
+		kubernetesServer.expect()
+			.get()
+			.withPath("/api/v1/namespaces/test/services/existing-service")
+			.andReturn(200,
+					new ServiceBuilder().withNewMetadata()
+						.withName("existing-service")
+						.withLabels(Map.of("label", "value"))
+						.endMetadata()
+						.withSpec(new ServiceSpecBuilder().withType("ExternalName").build())
+						.build())
+			.once();
 
 		KubernetesDiscoveryProperties properties = new KubernetesDiscoveryProperties(true, true, Set.of(), true, 60,
 				false, null, Set.of(), Map.of(), "https_tcp", Metadata.DEFAULT, 0, true);

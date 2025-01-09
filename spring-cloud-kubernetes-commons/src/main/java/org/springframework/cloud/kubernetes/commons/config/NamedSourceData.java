@@ -20,7 +20,11 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import static org.springframework.cloud.kubernetes.commons.config.ConfigUtils.onException;
+import static org.springframework.cloud.kubernetes.commons.config.Constants.ERROR_PROPERTY;
 import static org.springframework.cloud.kubernetes.commons.config.Constants.PROPERTY_SOURCE_NAME_SEPARATOR;
 
 /**
@@ -30,6 +34,8 @@ import static org.springframework.cloud.kubernetes.commons.config.Constants.PROP
  * prefix based properties and single file yaml/properties.
  */
 public abstract class NamedSourceData {
+
+	private static final Log LOG = LogFactory.getLog(NamedSourceData.class);
 
 	public final SourceData compute(String sourceName, ConfigUtils.Prefix prefix, String target, boolean profileSources,
 			boolean failFast, String namespace, String[] activeProfiles) {
@@ -51,7 +57,9 @@ public abstract class NamedSourceData {
 			data = dataSupplier(sourceNames);
 
 			if (data.names().isEmpty()) {
-				return new SourceData(ConfigUtils.sourceName(target, sourceName, namespace), Map.of());
+				String emptySourceName = ConfigUtils.sourceName(target, sourceName, namespace);
+				LOG.debug("Will return empty source with name : " + emptySourceName);
+				return SourceData.emptyRecord(emptySourceName);
 			}
 
 			if (prefix != ConfigUtils.Prefix.DEFAULT) {
@@ -63,11 +71,17 @@ public abstract class NamedSourceData {
 
 		}
 		catch (Exception e) {
+			LOG.warn("Failure in reading named sources");
 			onException(failFast, e);
+			data = new MultipleSourcesContainer(data.names(), Map.of(ERROR_PROPERTY, "true"));
 		}
 
 		String names = data.names().stream().sorted().collect(Collectors.joining(PROPERTY_SOURCE_NAME_SEPARATOR));
-		return new SourceData(ConfigUtils.sourceName(target, names, namespace), data.data());
+		return new SourceData(generateSourceName(target, names, namespace, activeProfiles), data.data());
+	}
+
+	protected String generateSourceName(String target, String sourceName, String namespace, String[] activeProfiles) {
+		return ConfigUtils.sourceName(target, sourceName, namespace);
 	}
 
 	/**

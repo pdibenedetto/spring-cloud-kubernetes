@@ -35,6 +35,7 @@ import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.scheduling.annotation.Scheduled;
 
+import static org.springframework.cloud.kubernetes.commons.discovery.KubernetesDiscoveryConstants.CATALOG_WATCH_PROPERTY_WITH_DEFAULT_VALUE;
 import static org.springframework.cloud.kubernetes.commons.discovery.KubernetesDiscoveryConstants.DISCOVERY_GROUP;
 import static org.springframework.cloud.kubernetes.commons.discovery.KubernetesDiscoveryConstants.DISCOVERY_VERSION;
 import static org.springframework.cloud.kubernetes.commons.discovery.KubernetesDiscoveryConstants.ENDPOINT_SLICE;
@@ -66,7 +67,7 @@ public class KubernetesCatalogWatch implements ApplicationEventPublisherAware {
 		this.publisher = publisher;
 	}
 
-	@Scheduled(fixedDelayString = "${spring.cloud.kubernetes.discovery.catalogServicesWatchDelay:30000}")
+	@Scheduled(fixedDelayString = "${" + CATALOG_WATCH_PROPERTY_WITH_DEFAULT_VALUE + "}")
 	public void catalogServicesWatch() {
 		try {
 
@@ -97,11 +98,18 @@ public class KubernetesCatalogWatch implements ApplicationEventPublisherAware {
 			// can't use try with resources here as it will close the client
 			KubernetesClient client = context.kubernetesClient();
 			// this emulates : 'kubectl api-resources | grep -i EndpointSlice'
-			boolean found = client.getApiGroups().getGroups().stream().flatMap(x -> x.getVersions().stream())
-					.map(GroupVersionForDiscovery::getGroupVersion).filter(DISCOVERY_GROUP_VERSION::equals).findFirst()
-					.map(client::getApiResources).map(APIResourceList::getResources)
-					.map(x -> x.stream().map(APIResource::getKind))
-					.flatMap(x -> x.filter(y -> y.equals(ENDPOINT_SLICE)).findFirst()).isPresent();
+			boolean found = client.getApiGroups()
+				.getGroups()
+				.stream()
+				.flatMap(x -> x.getVersions().stream())
+				.map(GroupVersionForDiscovery::getGroupVersion)
+				.filter(DISCOVERY_GROUP_VERSION::equals)
+				.findFirst()
+				.map(client::getApiResources)
+				.map(APIResourceList::getResources)
+				.map(x -> x.stream().map(APIResource::getKind))
+				.flatMap(x -> x.filter(y -> y.equals(ENDPOINT_SLICE)).findFirst())
+				.isPresent();
 
 			if (!found) {
 				throw new IllegalArgumentException("EndpointSlices are not supported on the cluster");

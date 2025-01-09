@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -87,7 +88,17 @@ public abstract class SecretsPropertySourceLocator implements PropertySourceLoca
 			putPathConfig(composite);
 
 			if (this.properties.enableApi()) {
-				uniqueSources.forEach(s -> composite.addPropertySource(getMapPropertySourceForSingleSecret(env, s)));
+				uniqueSources.forEach(s -> {
+					MapPropertySource propertySource = getSecretsPropertySourceForSingleSecret(env, s);
+
+					if ("true".equals(propertySource.getProperty(Constants.ERROR_PROPERTY))) {
+						LOG.warn("Failed to load source: " + s);
+					}
+					else {
+						LOG.debug("Adding secret property source " + propertySource.getName());
+						composite.addFirstPropertySource(propertySource);
+					}
+				});
 			}
 
 			cache.discardAll();
@@ -101,16 +112,21 @@ public abstract class SecretsPropertySourceLocator implements PropertySourceLoca
 		return PropertySourceLocator.super.locateCollection(environment);
 	}
 
-	private MapPropertySource getMapPropertySourceForSingleSecret(ConfigurableEnvironment environment,
+	private SecretsPropertySource getSecretsPropertySourceForSingleSecret(ConfigurableEnvironment environment,
 			NormalizedSource normalizedSource) {
 
 		return getPropertySource(environment, normalizedSource);
 	}
 
-	protected abstract MapPropertySource getPropertySource(ConfigurableEnvironment environment,
+	protected abstract SecretsPropertySource getPropertySource(ConfigurableEnvironment environment,
 			NormalizedSource normalizedSource);
 
 	protected void putPathConfig(CompositePropertySource composite) {
+
+		if (!properties.paths().isEmpty()) {
+			LOG.warn(
+					"path support is deprecated and will be removed in a future release. Please use spring.config.import");
+		}
 
 		this.properties.paths().stream().map(Paths::get).filter(Files::exists).flatMap(x -> {
 			try {
@@ -120,25 +136,28 @@ public abstract class SecretsPropertySourceLocator implements PropertySourceLoca
 				LOG.warn("Error walking properties files", e);
 				return null;
 			}
-		}).filter(Objects::nonNull).filter(Files::isRegularFile).collect(new MapPropertySourceCollector())
-				.forEach(composite::addPropertySource);
+		})
+			.filter(Objects::nonNull)
+			.filter(Files::isRegularFile)
+			.collect(new SecretsPropertySourceCollector())
+			.forEach(composite::addPropertySource);
 	}
 
 	/**
 	 * @author wind57
 	 */
-	private static class MapPropertySourceCollector
-			implements Collector<Path, List<MapPropertySource>, List<MapPropertySource>> {
+	private static class SecretsPropertySourceCollector
+			implements Collector<Path, List<SecretsPropertySource>, List<SecretsPropertySource>> {
 
 		@Override
-		public Supplier<List<MapPropertySource>> supplier() {
+		public Supplier<List<SecretsPropertySource>> supplier() {
 			return ArrayList::new;
 		}
 
 		@Override
-		public BiConsumer<List<MapPropertySource>, Path> accumulator() {
+		public BiConsumer<List<SecretsPropertySource>, Path> accumulator() {
 			return (list, filePath) -> {
-				MapPropertySource source = property(filePath);
+				SecretsPropertySource source = property(filePath);
 				if (source != null) {
 					list.add(source);
 				}
@@ -146,7 +165,7 @@ public abstract class SecretsPropertySourceLocator implements PropertySourceLoca
 		}
 
 		@Override
-		public BinaryOperator<List<MapPropertySource>> combiner() {
+		public BinaryOperator<List<SecretsPropertySource>> combiner() {
 			return (left, right) -> {
 				left.addAll(right);
 				return left;
@@ -154,7 +173,7 @@ public abstract class SecretsPropertySourceLocator implements PropertySourceLoca
 		}
 
 		@Override
-		public Function<List<MapPropertySource>, List<MapPropertySource>> finisher() {
+		public Function<List<SecretsPropertySource>, List<SecretsPropertySource>> finisher() {
 			return Function.identity();
 		}
 
@@ -163,13 +182,15 @@ public abstract class SecretsPropertySourceLocator implements PropertySourceLoca
 			return EnumSet.of(Characteristics.UNORDERED, Characteristics.IDENTITY_FINISH);
 		}
 
-		private MapPropertySource property(Path filePath) {
+		private SecretsPropertySource property(Path filePath) {
 
 			String fileName = filePath.getFileName().toString();
 
 			try {
 				String content = new String(Files.readAllBytes(filePath)).trim();
-				return new MapPropertySource(fileName.toLowerCase(), Collections.singletonMap(fileName, content));
+				String sourceName = fileName.toLowerCase(Locale.ROOT);
+				SourceData sourceData = new SourceData(sourceName, Collections.singletonMap(fileName, content));
+				return new SecretsPropertySource(sourceData);
 			}
 			catch (IOException e) {
 				LOG.warn("Error reading properties file", e);

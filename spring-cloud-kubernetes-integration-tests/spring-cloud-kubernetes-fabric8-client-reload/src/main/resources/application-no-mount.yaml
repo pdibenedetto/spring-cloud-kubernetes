@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: poll-reload
+  config:
+    import: "kubernetes:"
+  cloud:
+    kubernetes:
+      reload:
+        enabled: true
+        monitoring-config-maps: true
+        strategy: shutdown
+        mode: polling
+        period: 5000
+

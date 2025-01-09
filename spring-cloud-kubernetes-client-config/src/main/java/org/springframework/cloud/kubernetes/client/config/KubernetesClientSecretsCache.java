@@ -29,6 +29,7 @@ import org.apache.commons.logging.LogFactory;
 import org.springframework.cloud.kubernetes.commons.config.SecretsCache;
 import org.springframework.cloud.kubernetes.commons.config.StrippedSourceContainer;
 import org.springframework.core.log.LogAccessor;
+import org.springframework.util.ObjectUtils;
 
 /**
  * A cache of V1ConfigMap(s) per namespace. Makes sure we read config maps only once from
@@ -57,8 +58,8 @@ public class KubernetesClientSecretsCache implements SecretsCache {
 			try {
 				b[0] = true;
 				return strippedSecrets(coreV1Api
-						.listNamespacedSecret(namespace, null, null, null, null, null, null, null, null, null, null)
-						.getItems());
+					.listNamespacedSecret(namespace, null, null, null, null, null, null, null, null, null, null, null)
+					.getItems());
 			}
 			catch (ApiException apiException) {
 				throw new RuntimeException(apiException.getResponseBody(), apiException);
@@ -76,12 +77,15 @@ public class KubernetesClientSecretsCache implements SecretsCache {
 	}
 
 	private static List<StrippedSourceContainer> strippedSecrets(List<V1Secret> secrets) {
-		return secrets.stream().map(secret -> new StrippedSourceContainer(secret.getMetadata().getLabels(),
-				secret.getMetadata().getName(), transform(secret.getData()))).collect(Collectors.toList());
+		return secrets.stream()
+			.map(secret -> new StrippedSourceContainer(secret.getMetadata().getLabels(), secret.getMetadata().getName(),
+					transform(secret.getData())))
+			.toList();
 	}
 
 	private static Map<String, String> transform(Map<String, byte[]> in) {
-		return in.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, en -> new String(en.getValue())));
+		return ObjectUtils.isEmpty(in) ? Map.of()
+				: in.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, en -> new String(en.getValue())));
 	}
 
 }

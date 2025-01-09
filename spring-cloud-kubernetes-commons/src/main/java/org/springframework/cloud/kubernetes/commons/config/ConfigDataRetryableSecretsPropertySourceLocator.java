@@ -20,7 +20,6 @@ import java.util.Collection;
 
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
-import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.PropertySource;
 import org.springframework.retry.support.RetryTemplate;
 
@@ -44,20 +43,22 @@ public class ConfigDataRetryableSecretsPropertySourceLocator extends SecretsProp
 			SecretsConfigProperties secretsConfigProperties) {
 		super(secretsConfigProperties);
 		this.secretsPropertySourceLocator = propertySourceLocator;
-		this.retryTemplate = RetryTemplate.builder().maxAttempts(properties.retry().maxAttempts())
-				.exponentialBackoff(properties.retry().initialInterval(), properties.retry().multiplier(),
-						properties.retry().maxInterval())
-				.build();
+		this.retryTemplate = RetryTemplate.builder()
+			.maxAttempts(properties.retry().maxAttempts())
+			.exponentialBackoff(properties.retry().initialInterval(), properties.retry().multiplier(),
+					properties.retry().maxInterval())
+			.build();
 	}
 
 	public ConfigDataRetryableSecretsPropertySourceLocator(SecretsPropertySourceLocator propertySourceLocator,
 			SecretsConfigProperties secretsConfigProperties, SecretsCache cache) {
 		super(secretsConfigProperties, cache);
 		this.secretsPropertySourceLocator = propertySourceLocator;
-		this.retryTemplate = RetryTemplate.builder().maxAttempts(properties.retry().maxAttempts())
-				.exponentialBackoff(properties.retry().initialInterval(), properties.retry().multiplier(),
-						properties.retry().maxInterval())
-				.build();
+		this.retryTemplate = RetryTemplate.builder()
+			.maxAttempts(properties.retry().maxAttempts())
+			.exponentialBackoff(properties.retry().initialInterval(), properties.retry().multiplier(),
+					properties.retry().maxInterval())
+			.build();
 	}
 
 	@Override
@@ -71,7 +72,7 @@ public class ConfigDataRetryableSecretsPropertySourceLocator extends SecretsProp
 	}
 
 	@Override
-	protected MapPropertySource getPropertySource(ConfigurableEnvironment environment,
+	protected SecretsPropertySource getPropertySource(ConfigurableEnvironment environment,
 			NormalizedSource normalizedSource) {
 		return this.secretsPropertySourceLocator.getPropertySource(environment, normalizedSource);
 	}

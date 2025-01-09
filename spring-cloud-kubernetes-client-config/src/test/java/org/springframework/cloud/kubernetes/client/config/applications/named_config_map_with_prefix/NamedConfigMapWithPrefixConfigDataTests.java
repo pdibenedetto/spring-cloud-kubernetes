@@ -29,7 +29,7 @@ import org.springframework.cloud.kubernetes.client.KubernetesClientUtils;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 import static org.mockito.Mockito.mockStatic;
-import static org.springframework.cloud.kubernetes.client.config.boostrap.stubs.NamedConfigMapWithPrefixConfigurationStub.stubData;
+import static org.springframework.cloud.kubernetes.client.config.bootstrap.stubs.NamedConfigMapWithPrefixConfigurationStub.stubData;
 
 /**
  * @author Ryan Baxter
@@ -49,10 +49,10 @@ class NamedConfigMapWithPrefixConfigDataTests extends NamedConfigMapWithPrefixTe
 		WireMock.configureFor("localhost", server.port());
 		clientUtilsMock = mockStatic(KubernetesClientUtils.class);
 		clientUtilsMock.when(KubernetesClientUtils::kubernetesApiClient)
-				.thenReturn(new ClientBuilder().setBasePath(server.baseUrl()).build());
+			.thenReturn(new ClientBuilder().setBasePath(server.baseUrl()).build());
 		clientUtilsMock
-				.when(() -> KubernetesClientUtils.getApplicationNamespace(Mockito.any(), Mockito.any(), Mockito.any()))
-				.thenReturn("spring-k8s");
+			.when(() -> KubernetesClientUtils.getApplicationNamespace(Mockito.any(), Mockito.any(), Mockito.any()))
+			.thenReturn("spring-k8s");
 		stubData();
 	}
 
