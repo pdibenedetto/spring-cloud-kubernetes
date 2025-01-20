@@ -39,7 +39,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 
 /**
  * Stubs for this test are in
- * {@link org.springframework.cloud.kubernetes.client.config.boostrap.stubs.LabeledSecretWithProfileConfigurationStub}
+ * {@link org.springframework.cloud.kubernetes.client.config.bootstrap.stubs.LabeledSecretWithProfileConfigurationStub}
  *
  * @author wind57
  */
@@ -67,8 +67,13 @@ abstract class LabeledSecretWithProfileTests {
 	 */
 	@Test
 	void testBlue() {
-		this.webClient.get().uri("/labeled-secret/profile/blue").exchange().expectStatus().isOk()
-				.expectBody(String.class).value(Matchers.equalTo("1"));
+		this.webClient.get()
+			.uri("/labeled-secret/profile/blue")
+			.exchange()
+			.expectStatus()
+			.isOk()
+			.expectBody(String.class)
+			.value(Matchers.equalTo("1"));
 	}
 
 	/**
@@ -81,8 +86,13 @@ abstract class LabeledSecretWithProfileTests {
 	 */
 	@Test
 	void testGreen() {
-		this.webClient.get().uri("/labeled-secret/profile/green").exchange().expectStatus().isOk()
-				.expectBody(String.class).value(Matchers.equalTo("2#6#7#eight-ish"));
+		this.webClient.get()
+			.uri("/labeled-secret/profile/green")
+			.exchange()
+			.expectStatus()
+			.isOk()
+			.expectBody(String.class)
+			.value(Matchers.equalTo("2#6#7#eight-ish"));
 	}
 
 }

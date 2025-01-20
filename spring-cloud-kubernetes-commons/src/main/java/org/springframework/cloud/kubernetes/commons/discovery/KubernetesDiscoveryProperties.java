@@ -20,13 +20,14 @@ import java.util.Map;
 import java.util.Set;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 import static org.springframework.cloud.client.discovery.DiscoveryClient.DEFAULT_ORDER;
 
 /**
  * @param enabled if kubernetes discovery is enabled
- * @param allNamespaces if discover is enabled for all namespaces
+ * @param allNamespaces if discovery is enabled for all namespaces
  * @param namespaces If set and allNamespaces is false, then only the services and
  * endpoints matching these namespaces will be fetched from the Kubernetes API server.
  * @param waitCacheReady wait for the discovery cache (service and endpoints) to be fully
@@ -43,9 +44,11 @@ import static org.springframework.cloud.client.discovery.DiscoveryClient.DEFAULT
  * @param primaryPortName If set then the port with a given name is used as primary when
  * multiple ports are defined for a service.
  * @param useEndpointSlices use EndpointSlice instead of Endpoints
+ * @param includeExternalNameServices should the discovery also search for services that
+ * have "type: ExternalName" in their spec.
  */
 // @formatter:off
-@ConfigurationProperties("spring.cloud.kubernetes.discovery")
+@ConfigurationProperties(KubernetesDiscoveryProperties.PREFIX)
 public record KubernetesDiscoveryProperties(
 		@DefaultValue("true") boolean enabled, boolean allNamespaces,
 		@DefaultValue Set<String> namespaces,
@@ -56,14 +59,50 @@ public record KubernetesDiscoveryProperties(
 		@DefaultValue Map<String, String> serviceLabels, String primaryPortName,
 		@DefaultValue Metadata metadata,
 		@DefaultValue("" + DEFAULT_ORDER) int order,
-		boolean useEndpointSlices) {
+		boolean useEndpointSlices,
+		boolean includeExternalNameServices,
+		String discoveryServerUrl) {
 // @formatter:on
+
+	/**
+	 * Prefix of the properties.
+	 */
+	public static final String PREFIX = "spring.cloud.kubernetes.discovery";
+
+	@ConstructorBinding
+	public KubernetesDiscoveryProperties {
+
+	}
+
+	public KubernetesDiscoveryProperties(@DefaultValue("true") boolean enabled, boolean allNamespaces,
+			@DefaultValue Set<String> namespaces, @DefaultValue("true") boolean waitCacheReady,
+			@DefaultValue("60") long cacheLoadingTimeoutSeconds, boolean includeNotReadyAddresses, String filter,
+			@DefaultValue({ "443", "8443" }) Set<Integer> knownSecurePorts,
+			@DefaultValue Map<String, String> serviceLabels, String primaryPortName, @DefaultValue Metadata metadata,
+			@DefaultValue("" + DEFAULT_ORDER) int order, boolean useEndpointSlices) {
+		this(enabled, allNamespaces, namespaces, waitCacheReady, cacheLoadingTimeoutSeconds, includeNotReadyAddresses,
+				filter, knownSecurePorts, serviceLabels, primaryPortName, metadata, order, useEndpointSlices, false,
+				null);
+	}
+
+	public KubernetesDiscoveryProperties(@DefaultValue("true") boolean enabled, boolean allNamespaces,
+			@DefaultValue Set<String> namespaces, @DefaultValue("true") boolean waitCacheReady,
+			@DefaultValue("60") long cacheLoadingTimeoutSeconds, boolean includeNotReadyAddresses, String filter,
+			@DefaultValue({ "443", "8443" }) Set<Integer> knownSecurePorts,
+			@DefaultValue Map<String, String> serviceLabels, String primaryPortName, @DefaultValue Metadata metadata,
+			@DefaultValue("" + DEFAULT_ORDER) int order, boolean useEndpointSlices,
+			boolean includeExternalNameServices) {
+		this(enabled, allNamespaces, namespaces, waitCacheReady, cacheLoadingTimeoutSeconds, includeNotReadyAddresses,
+				filter, knownSecurePorts, serviceLabels, primaryPortName, metadata, order, useEndpointSlices,
+				includeExternalNameServices, null);
+	}
 
 	/**
 	 * Default instance.
 	 */
 	public static final KubernetesDiscoveryProperties DEFAULT = new KubernetesDiscoveryProperties(true, false, Set.of(),
-			true, 60, false, null, Set.of(), Map.of(), null, KubernetesDiscoveryProperties.Metadata.DEFAULT, 0, false);
+			true, 60, false, null, Set.of(), Map.of(), null, KubernetesDiscoveryProperties.Metadata.DEFAULT, 0, false,
+			false, null);
 
 	/**
 	 * @param addLabels include labels as metadata
@@ -72,15 +111,30 @@ public record KubernetesDiscoveryProperties(
 	 * @param annotationsPrefix prefix for the annotations
 	 * @param addPorts include ports as metadata
 	 * @param portsPrefix prefix for the ports, by default it is "port."
+	 * @param addPodLabels add pod labels as part of the response.
+	 * @param addPodAnnotations add pod annotations as part of the response.
 	 */
 	public record Metadata(@DefaultValue("true") boolean addLabels, String labelsPrefix,
 			@DefaultValue("true") boolean addAnnotations, String annotationsPrefix,
-			@DefaultValue("true") boolean addPorts, @DefaultValue("port.") String portsPrefix) {
+			@DefaultValue("true") boolean addPorts, @DefaultValue("port.") String portsPrefix, boolean addPodLabels,
+			boolean addPodAnnotations) {
+
+		@ConstructorBinding
+		public Metadata {
+
+		}
+
+		public Metadata(@DefaultValue("true") boolean addLabels, String labelsPrefix,
+				@DefaultValue("true") boolean addAnnotations, String annotationsPrefix,
+				@DefaultValue("true") boolean addPorts, @DefaultValue("port.") String portsPrefix) {
+
+			this(addLabels, labelsPrefix, addAnnotations, annotationsPrefix, addPorts, portsPrefix, false, false);
+		}
 
 		/**
 		 * Default instance.
 		 */
-		public static final Metadata DEFAULT = new Metadata(true, null, true, null, true, "port.");
+		public static final Metadata DEFAULT = new Metadata(true, null, true, null, true, "port.", false, false);
 
 	}
 

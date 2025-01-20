@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2023 the original author or authors.
+ * Copyright 2013-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 package org.springframework.cloud.kubernetes.fabric8.discovery;
 
+import org.springframework.boot.context.properties.bind.BindHandler;
+import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.cloud.kubernetes.commons.KubernetesNamespaceProvider;
 import org.springframework.cloud.kubernetes.commons.discovery.KubernetesDiscoveryProperties;
 import org.springframework.cloud.kubernetes.fabric8.Fabric8Utils;
@@ -39,6 +41,27 @@ public final class KubernetesClientServicesFunctionProvider {
 		return client -> {
 			String namespace = Fabric8Utils.getApplicationNamespace(client, null, "discovery-service",
 					new KubernetesNamespaceProvider(environment));
+			return client.services().inNamespace(namespace).withLabels(properties.serviceLabels());
+		};
+
+	}
+
+	@Deprecated(forRemoval = true)
+	public static KubernetesClientServicesFunction servicesFunction(KubernetesDiscoveryProperties properties,
+			Binder binder, BindHandler bindHandler) {
+		return servicesFunction(properties, new KubernetesNamespaceProvider(binder, bindHandler));
+	}
+
+	public static KubernetesClientServicesFunction servicesFunction(KubernetesDiscoveryProperties properties,
+			KubernetesNamespaceProvider namespaceProvider) {
+
+		if (properties.allNamespaces()) {
+			return (client) -> client.services().inAnyNamespace().withLabels(properties.serviceLabels());
+		}
+
+		return client -> {
+			String namespace = Fabric8Utils.getApplicationNamespace(client, null, "discovery-service",
+					namespaceProvider);
 			return client.services().inNamespace(namespace).withLabels(properties.serviceLabels());
 		};
 

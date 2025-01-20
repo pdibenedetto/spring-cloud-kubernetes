@@ -26,8 +26,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 /**
- * Stud data is in
- * {@link org.springframework.cloud.kubernetes.client.config.boostrap.stubs.LabeledConfigMapWithProfileConfigurationStub}
+ * Stub data is in
+ * {@link org.springframework.cloud.kubernetes.client.config.bootstrap.stubs.LabeledConfigMapWithProfileConfigurationStub}
  *
  * @author wind57
  */
@@ -55,8 +55,13 @@ abstract class LabeledConfigMapWithProfileTests {
 	 */
 	@Test
 	void testBlue() {
-		this.webClient.get().uri("/labeled-configmap/profile/blue").exchange().expectStatus().isOk()
-				.expectBody(String.class).value(Matchers.equalTo("1"));
+		this.webClient.get()
+			.uri("/labeled-configmap/profile/blue")
+			.exchange()
+			.expectStatus()
+			.isOk()
+			.expectBody(String.class)
+			.value(Matchers.equalTo("1"));
 	}
 
 	/**
@@ -69,8 +74,13 @@ abstract class LabeledConfigMapWithProfileTests {
 	 */
 	@Test
 	void testGreen() {
-		this.webClient.get().uri("/labeled-configmap/profile/green").exchange().expectStatus().isOk()
-				.expectBody(String.class).value(Matchers.equalTo("2#6#7#eight-ish"));
+		this.webClient.get()
+			.uri("/labeled-configmap/profile/green")
+			.exchange()
+			.expectStatus()
+			.isOk()
+			.expectBody(String.class)
+			.value(Matchers.equalTo("2#6#7#eight-ish"));
 	}
 
 }

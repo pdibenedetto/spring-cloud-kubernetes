@@ -67,4 +67,45 @@ public final class KubernetesDiscoveryConstants {
 	 */
 	public static final String ENDPOINT_SLICE = "EndpointSlice";
 
+	/**
+	 * ExternalName type of service.
+	 */
+	public static final String EXTERNAL_NAME = "ExternalName";
+
+	/**
+	 * Type of the service.
+	 */
+	public static final String SERVICE_TYPE = "type";
+
+	/**
+	 * value of the 'secure' label or annotation.
+	 */
+	public static final String SECURED = "secured";
+
+	/**
+	 * catalog watch delay property name.
+	 */
+	public static final String CATALOG_WATCH_PROPERTY_NAME = "spring.cloud.kubernetes.discovery.catalogServicesWatchDelay";
+
+	/**
+	 * default delay for the configuration watcher.
+	 */
+	public static final String CATALOG_WATCHER_DEFAULT_DELAY = "30000";
+
+	/**
+	 * catalog watch delay property name with default value.
+	 */
+	public static final String CATALOG_WATCH_PROPERTY_WITH_DEFAULT_VALUE = CATALOG_WATCH_PROPERTY_NAME + ":"
+			+ CATALOG_WATCHER_DEFAULT_DELAY;
+
+	/**
+	 * load balancer port name property.
+	 */
+	public static final String PORT_NAME_PROPERTY = "'spring.cloud.kubernetes.loadbalancer.portName'";
+
+	/**
+	 * message for non-deterministic port.
+	 */
+	public static final String NON_DETERMINISTIC_PORT_MESSAGE = "Will return 'first' port found, which is non-deterministic";
+
 }

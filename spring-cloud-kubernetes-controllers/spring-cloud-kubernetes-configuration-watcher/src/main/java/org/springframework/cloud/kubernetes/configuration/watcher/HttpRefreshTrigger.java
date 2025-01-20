@@ -24,7 +24,6 @@ import org.apache.commons.logging.LogFactory;
 import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.client.ServiceInstance;
-import org.springframework.cloud.kubernetes.client.config.reload.KubernetesClientEventBasedSecretsChangeDetector;
 import org.springframework.cloud.kubernetes.client.discovery.reactive.KubernetesInformerReactiveDiscoveryClient;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.http.ResponseEntity;
@@ -32,13 +31,14 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import static org.springframework.cloud.kubernetes.configuration.watcher.ConfigurationWatcherConfigurationProperties.RefreshStrategy.SHUTDOWN;
+
 /**
  * @author wind57
  */
 final class HttpRefreshTrigger implements RefreshTrigger {
 
-	private static final LogAccessor LOG = new LogAccessor(
-			LogFactory.getLog(KubernetesClientEventBasedSecretsChangeDetector.class));
+	private static final LogAccessor LOG = new LogAccessor(LogFactory.getLog(HttpRefreshTrigger.class));
 
 	private final KubernetesInformerReactiveDiscoveryClient kubernetesReactiveDiscoveryClient;
 
@@ -60,8 +60,12 @@ final class HttpRefreshTrigger implements RefreshTrigger {
 			URI actuatorUri = getActuatorUri(si, k8SConfigurationProperties.getActuatorPath(),
 					k8SConfigurationProperties.getActuatorPort());
 			LOG.debug(() -> "Sending refresh request for " + appName + " to URI " + actuatorUri);
-			return webClient.post().uri(actuatorUri).retrieve().toBodilessEntity()
-					.doOnSuccess(onSuccess(appName, actuatorUri)).doOnError(onError(appName));
+			return webClient.post()
+				.uri(actuatorUri)
+				.retrieve()
+				.toBodilessEntity()
+				.doOnSuccess(onSuccess(appName, actuatorUri))
+				.doOnError(onError(appName));
 		}).then();
 	}
 
@@ -75,12 +79,13 @@ final class HttpRefreshTrigger implements RefreshTrigger {
 	}
 
 	private URI getActuatorUri(ServiceInstance si, String actuatorPath, int actuatorPort) {
-		String metadataUri = si.getMetadata().getOrDefault(ConfigurationWatcherConfigurationProperties.ANNOTATION_KEY,
-				"");
+		String metadataUri = si.getMetadata()
+			.getOrDefault(ConfigurationWatcherConfigurationProperties.ANNOTATION_KEY, "");
 		LOG.debug(() -> "Metadata actuator uri is: " + metadataUri);
 
-		UriComponentsBuilder actuatorUriBuilder = UriComponentsBuilder.newInstance().scheme(si.getScheme())
-				.host(si.getHost());
+		UriComponentsBuilder actuatorUriBuilder = UriComponentsBuilder.newInstance()
+			.scheme(si.getScheme())
+			.host(si.getHost());
 
 		if (StringUtils.hasText(metadataUri)) {
 			LOG.debug(() -> "Found actuator URI in service instance metadata");
@@ -88,7 +93,7 @@ final class HttpRefreshTrigger implements RefreshTrigger {
 		}
 		else {
 			int port = actuatorPort < 0 ? si.getPort() : actuatorPort;
-			actuatorUriBuilder = actuatorUriBuilder.path(actuatorPath + "/refresh").port(port);
+			actuatorUriBuilder = actuatorUriBuilder.path(actuatorPath + getRefreshStrategyEndpoint()).port(port);
 		}
 
 		return actuatorUriBuilder.build().toUri();
@@ -96,7 +101,7 @@ final class HttpRefreshTrigger implements RefreshTrigger {
 
 	private void setActuatorUriFromAnnotation(UriComponentsBuilder actuatorUriBuilder, String metadataUri) {
 		URI annotationUri = URI.create(metadataUri);
-		actuatorUriBuilder.path(annotationUri.getPath() + "/refresh");
+		actuatorUriBuilder.path(annotationUri.getPath() + getRefreshStrategyEndpoint());
 
 		// The URI may not contain a host so if that is the case the port in the URI will
 		// be -1. The authority of the URI will be :<port> for example :9090, we just need
@@ -109,6 +114,13 @@ final class HttpRefreshTrigger implements RefreshTrigger {
 		else {
 			actuatorUriBuilder.port(annotationUri.getPort());
 		}
+	}
+
+	private String getRefreshStrategyEndpoint() {
+		if (k8SConfigurationProperties.getRefreshStrategy() == SHUTDOWN) {
+			return "/shutdown";
+		}
+		return "/refresh";
 	}
 
 }

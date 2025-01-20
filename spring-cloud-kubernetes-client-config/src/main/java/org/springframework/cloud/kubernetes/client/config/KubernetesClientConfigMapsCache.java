@@ -18,7 +18,6 @@ package org.springframework.cloud.kubernetes.client.config;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
@@ -35,7 +34,7 @@ import org.springframework.core.log.LogAccessor;
  *
  * @author wind57
  */
-final class KubernetesClientConfigMapsCache implements ConfigMapCache {
+public final class KubernetesClientConfigMapsCache implements ConfigMapCache {
 
 	private static final LogAccessor LOG = new LogAccessor(LogFactory.getLog(KubernetesClientConfigMapsCache.class));
 
@@ -56,8 +55,9 @@ final class KubernetesClientConfigMapsCache implements ConfigMapCache {
 			try {
 				b[0] = true;
 				return strippedConfigMaps(coreV1Api
-						.listNamespacedConfigMap(namespace, null, null, null, null, null, null, null, null, null, null)
-						.getItems());
+					.listNamespacedConfigMap(namespace, null, null, null, null, null, null, null, null, null, null,
+							null)
+					.getItems());
 			}
 			catch (ApiException apiException) {
 				throw new RuntimeException(apiException.getResponseBody(), apiException);
@@ -75,8 +75,10 @@ final class KubernetesClientConfigMapsCache implements ConfigMapCache {
 	}
 
 	private static List<StrippedSourceContainer> strippedConfigMaps(List<V1ConfigMap> configMaps) {
-		return configMaps.stream().map(configMap -> new StrippedSourceContainer(configMap.getMetadata().getLabels(),
-				configMap.getMetadata().getName(), configMap.getData())).collect(Collectors.toList());
+		return configMaps.stream()
+			.map(configMap -> new StrippedSourceContainer(configMap.getMetadata().getLabels(),
+					configMap.getMetadata().getName(), configMap.getData()))
+			.toList();
 	}
 
 }

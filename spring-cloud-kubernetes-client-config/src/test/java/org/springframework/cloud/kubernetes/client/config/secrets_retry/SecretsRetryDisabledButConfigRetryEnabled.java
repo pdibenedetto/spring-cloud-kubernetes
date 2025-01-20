@@ -55,7 +55,7 @@ import static org.mockito.Mockito.verify;
 				"spring.cloud.kubernetes.secrets.retry.enabled=false", "spring.cloud.kubernetes.config.fail-fast=true",
 				"spring.cloud.kubernetes.secrets.name=my-secret", "spring.cloud.kubernetes.secrets.enable-api=true",
 				"spring.main.cloud-platform=KUBERNETES", "spring.config.import=kubernetes:" },
-		classes = Application.class)
+		classes = SecretsRetryApplication.class)
 class SecretsRetryDisabledButConfigRetryEnabled {
 
 	private static final String API = "/api/v1/namespaces/default/secrets";
@@ -74,10 +74,10 @@ class SecretsRetryDisabledButConfigRetryEnabled {
 
 		clientUtilsMock = mockStatic(KubernetesClientUtils.class);
 		clientUtilsMock.when(KubernetesClientUtils::kubernetesApiClient)
-				.thenReturn(new ClientBuilder().setBasePath(wireMockServer.baseUrl()).build());
+			.thenReturn(new ClientBuilder().setBasePath(wireMockServer.baseUrl()).build());
 		clientUtilsMock
-				.when(() -> KubernetesClientUtils.getApplicationNamespace(Mockito.any(), Mockito.any(), Mockito.any()))
-				.thenReturn("default");
+			.when(() -> KubernetesClientUtils.getApplicationNamespace(Mockito.any(), Mockito.any(), Mockito.any()))
+			.thenReturn("default");
 		stubConfigMapAndSecretsDefaults();
 	}
 
@@ -85,7 +85,7 @@ class SecretsRetryDisabledButConfigRetryEnabled {
 		// return empty config map / secret list to not fail context creation
 		stubFor(get(API).willReturn(aResponse().withStatus(200).withBody(new JSON().serialize(new V1SecretList()))));
 		stubFor(get(CONFIG_MAPS_API)
-				.willReturn(aResponse().withStatus(200).withBody(new JSON().serialize(new V1ConfigMapList()))));
+			.willReturn(aResponse().withStatus(200).withBody(new JSON().serialize(new V1ConfigMapList()))));
 	}
 
 	@AfterAll
@@ -121,7 +121,8 @@ class SecretsRetryDisabledButConfigRetryEnabled {
 		// TODO not in bootstrap
 		// assertThat(context.containsBean("kubernetesSecretsRetryInterceptor")).isTrue();
 		assertThatThrownBy(() -> propertySourceLocator.locate(new MockEnvironment()))
-				.isInstanceOf(IllegalStateException.class).hasMessage("Internal Server Error");
+			.isInstanceOf(IllegalStateException.class)
+			.hasMessage("Internal Server Error");
 
 		// verify that propertySourceLocator.locate is called only once
 		verify(propertySourceLocator, times(1)).locate(any());

@@ -16,7 +16,6 @@
 
 package org.springframework.cloud.kubernetes.fabric8.discovery;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -28,6 +27,9 @@ import org.springframework.cloud.kubernetes.commons.KubernetesNamespaceProvider;
 import org.springframework.cloud.kubernetes.commons.discovery.EndpointNameAndNamespace;
 import org.springframework.cloud.kubernetes.commons.discovery.KubernetesDiscoveryProperties;
 
+import static java.util.Comparator.comparing;
+import static java.util.Comparator.nullsLast;
+
 /**
  * A simple holder for some instances needed for either Endpoints or EndpointSlice catalog
  * implementations.
@@ -38,8 +40,10 @@ record Fabric8CatalogWatchContext(KubernetesClient kubernetesClient, KubernetesD
 		KubernetesNamespaceProvider namespaceProvider) {
 
 	static List<EndpointNameAndNamespace> state(Stream<ObjectReference> references) {
-		return references.filter(Objects::nonNull).map(x -> new EndpointNameAndNamespace(x.getName(), x.getNamespace()))
-				.sorted(Comparator.comparing(EndpointNameAndNamespace::endpointName, String::compareTo)).toList();
+		return references.filter(Objects::nonNull)
+			.map(x -> new EndpointNameAndNamespace(x.getName(), x.getNamespace()))
+			.sorted(comparing(EndpointNameAndNamespace::endpointName, nullsLast(String::compareTo)))
+			.toList();
 	}
 
 }

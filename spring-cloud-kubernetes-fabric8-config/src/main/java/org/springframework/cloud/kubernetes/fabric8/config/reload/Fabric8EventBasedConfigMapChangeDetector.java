@@ -19,6 +19,7 @@ package org.springframework.cloud.kubernetes.fabric8.config.reload;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
@@ -82,8 +83,10 @@ public class Fabric8EventBasedConfigMapChangeDetector extends ConfigurationChang
 		namespaces.forEach(namespace -> {
 			SharedIndexInformer<ConfigMap> informer;
 			if (enableReloadFiltering) {
-				informer = kubernetesClient.configMaps().inNamespace(namespace)
-						.withLabels(Map.of(ConfigReloadProperties.RELOAD_LABEL_FILTER, "true")).inform();
+				informer = kubernetesClient.configMaps()
+					.inNamespace(namespace)
+					.withLabels(Map.of(ConfigReloadProperties.RELOAD_LABEL_FILTER, "true"))
+					.inform();
 				LOG.debug("added configmap informer for namespace : " + namespace + " with enabled filter");
 			}
 			else {
@@ -131,7 +134,12 @@ public class Fabric8EventBasedConfigMapChangeDetector extends ConfigurationChang
 		public void onUpdate(ConfigMap oldConfigMap, ConfigMap newConfigMap) {
 			LOG.debug("ConfigMap " + newConfigMap.getMetadata().getName() + " was updated in namespace "
 					+ newConfigMap.getMetadata().getNamespace());
-			onEvent(newConfigMap);
+			if (Objects.equals(oldConfigMap.getData(), newConfigMap.getData())) {
+				LOG.debug(() -> "data in configmap has not changed, will not reload");
+			}
+			else {
+				onEvent(newConfigMap);
+			}
 		}
 
 		@Override

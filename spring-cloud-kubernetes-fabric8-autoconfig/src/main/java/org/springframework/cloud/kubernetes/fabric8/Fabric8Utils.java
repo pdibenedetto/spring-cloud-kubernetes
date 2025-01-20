@@ -16,11 +16,16 @@
 
 package org.springframework.cloud.kubernetes.fabric8;
 
+import io.fabric8.kubernetes.api.model.ObjectMeta;
+import io.fabric8.kubernetes.api.model.Service;
+import io.fabric8.kubernetes.api.model.ServiceSpec;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import jakarta.annotation.Nullable;
 import org.apache.commons.logging.LogFactory;
 
 import org.springframework.cloud.kubernetes.commons.KubernetesNamespaceProvider;
 import org.springframework.cloud.kubernetes.commons.config.NamespaceResolutionFailedException;
+import org.springframework.cloud.kubernetes.commons.discovery.ServiceMetadata;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.util.StringUtils;
 
@@ -36,17 +41,24 @@ public final class Fabric8Utils {
 
 	}
 
+	public static ServiceMetadata serviceMetadata(Service service) {
+		ObjectMeta metadata = service.getMetadata();
+		ServiceSpec serviceSpec = service.getSpec();
+		return new ServiceMetadata(metadata.getName(), metadata.getNamespace(), serviceSpec.getType(),
+				metadata.getLabels(), metadata.getAnnotations());
+	}
+
 	private static final LogAccessor LOG = new LogAccessor(LogFactory.getLog(Fabric8Utils.class));
 
 	/**
-	 * this method does the namespace resolution for both config map and secrets
-	 * implementations. It tries these places to find the namespace:
+	 * this method does the namespace resolution. Namespace is being searched according to
+	 * the order below.
 	 *
 	 * <pre>
-	 *     1. from a normalized source (which can be null)
-	 *     2. from a property 'spring.cloud.kubernetes.client.namespace', if such is present
+	 *     1. from incoming namespace, which can be null.
+	 *     2. from a property 'spring.cloud.kubernetes.client.namespace', if such is present.
 	 *     3. from a String residing in a file denoted by `spring.cloud.kubernetes.client.serviceAccountNamespacePath`
-	 * 	      property, if such is present
+	 * 	      property, if such is present.
 	 * 	   4. from a String residing in `/var/run/secrets/kubernetes.io/serviceaccount/namespace` file,
 	 * 	  	  if such is present (kubernetes default path)
 	 * 	   5. from KubernetesClient::getNamespace, which is implementation specific.
@@ -60,8 +72,8 @@ public final class Fabric8Utils {
 	 * @return application namespace
 	 * @throws NamespaceResolutionFailedException when namespace could not be resolved
 	 */
-	public static String getApplicationNamespace(KubernetesClient client, String namespace, String configurationTarget,
-			KubernetesNamespaceProvider provider) {
+	public static String getApplicationNamespace(KubernetesClient client, @Nullable String namespace,
+			String configurationTarget, KubernetesNamespaceProvider provider) {
 
 		if (StringUtils.hasText(namespace)) {
 			LOG.debug(configurationTarget + " namespace : " + namespace);
